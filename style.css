@@ -1,0 +1,248 @@
+:root {
+  --bg: #1d1e21;
+  --bar: #2a2b30;
+  --line: #3b3d44;
+  --text: #eeeeea;
+  --muted: #9a9ca3;
+  --accent: #6aa9ff;
+  --accent-ink: #0c1a30;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ---------- 편집 화면 ---------- */
+#stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#empty { text-align: center; padding: 24px; }
+#empty p { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+
+#frame { position: relative; }
+#work { display: block; width: 100%; height: 100%; }
+
+/* ---------- 자르기 영역 ---------- */
+#dimClip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+#dim { position: absolute; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); }
+
+#cropBox {
+  position: absolute;
+  border: 2px solid #fff;
+  touch-action: none;
+  cursor: move;
+}
+
+.h { position: absolute; width: 44px; height: 44px; touch-action: none; }
+.h::after { content: ""; position: absolute; }
+
+/* 모서리 */
+.h.nw { left: -24px; top: -24px; }
+.h.ne { right: -24px; top: -24px; }
+.h.sw { left: -24px; bottom: -24px; }
+.h.se { right: -24px; bottom: -24px; }
+.h.nw::after, .h.ne::after, .h.sw::after, .h.se::after { width: 22px; height: 22px; }
+.h.nw::after { left: 20px; top: 20px; border-top: 4px solid #fff; border-left: 4px solid #fff; }
+.h.ne::after { left: 2px;  top: 20px; border-top: 4px solid #fff; border-right: 4px solid #fff; }
+.h.sw::after { left: 20px; top: 2px;  border-bottom: 4px solid #fff; border-left: 4px solid #fff; }
+.h.se::after { left: 2px;  top: 2px;  border-bottom: 4px solid #fff; border-right: 4px solid #fff; }
+
+/* 변 */
+.h.n { left: 50%; top: -24px; margin-left: -22px; }
+.h.s { left: 50%; bottom: -24px; margin-left: -22px; }
+.h.w { left: -24px; top: 50%; margin-top: -22px; }
+.h.e { right: -24px; top: 50%; margin-top: -22px; }
+.h.n::after, .h.s::after { left: 8px; top: 20px; width: 28px; height: 4px; background: #fff; border-radius: 2px; }
+.h.w::after, .h.e::after { left: 20px; top: 8px; width: 4px; height: 28px; background: #fff; border-radius: 2px; }
+
+/* 비율 고정일 때는 모서리만 사용 */
+#cropBox.locked .h.n, #cropBox.locked .h.s, #cropBox.locked .h.w, #cropBox.locked .h.e { display: none; }
+
+/* ---------- 하단 도구 모음 ---------- */
+#tools, #cropBar {
+  background: var(--bar);
+  border-top: 1px solid var(--line);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+}
+
+#tools { display: flex; gap: 4px; }
+
+.tool {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 6px;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  touch-action: manipulation;
+}
+.tool:active { background: var(--line); }
+.tool[disabled] { opacity: 0.3; }
+.tool.accent { color: var(--accent); }
+
+svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- 자르기 모음 ---------- */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
+.chip {
+  flex: none;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  touch-action: manipulation;
+}
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.row { display: flex; gap: 8px; }
+.row .btn { flex: 1; }
+
+/* ---------- 버튼 ---------- */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: center;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn[disabled] { opacity: 0.4; }
+#emptyOpen { width: auto; display: inline-block; padding: 13px 28px; }
+
+/* ---------- 저장·공유 시트 ---------- */
+#sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+}
+.panel {
+  width: 100%;
+  max-height: 92vh;
+  max-height: 92dvh;
+  overflow: auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--bar);
+  border-radius: 18px 18px 0 0;
+}
+.panel .btn { margin-top: 8px; }
+
+#preview {
+  display: block;
+  max-width: 100%;
+  max-height: 42vh;
+  margin: 0 auto 12px;
+  border-radius: 8px;
+  /* 길게 눌러 사진 앱에 저장할 수 있게 허용 */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+#info { margin: 0; text-align: center; font-size: 15px; }
+#hint { margin: 6px 0 8px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--muted); }
+
+/* ---------- 상단 버튼 (불러오기 · 되돌리기 · 저장·공유) ---------- */
+#app { padding-top: calc(env(safe-area-inset-top) + 52px); }
+#btnOpen, #btnUndo, #btnSave {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  z-index: 5;
+  flex: none;
+  flex-direction: row;
+  gap: 6px;
+  width: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--bar);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+#btnOpen svg, #btnUndo svg, #btnSave svg { width: 18px; height: 18px; }
+#btnOpen { left: 10px; }
+#btnUndo { left: 124px; }
+#btnSave { right: 10px; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+#tools { overflow-x: auto; }
+.tool { min-width: 0; }
+.tool.on { color: var(--accent); background: var(--line); }
+
+/* ---------- 모자이크·글자·화살표·도형 ---------- */
+#ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#frame.tooling #ov { pointer-events: auto; touch-action: none; }
+
+#opts { background: var(--bar); border-top: 1px solid var(--line); padding: 8px 10px 0; }
+#tip { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.orow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+#szl { flex: none; font-size: 13px; color: var(--muted); }
+#sz { flex: 1; min-width: 0; }
+.btn.small { width: auto; flex: none; margin: 0; padding: 8px 14px; font-size: 14px; }
+.chk { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 14px; }
+
+#swatches { display: flex; gap: 8px; align-items: center; flex: 1; overflow-x: auto; padding: 2px; }
+.sw { flex: none; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid var(--line); touch-action: manipulation; }
+.sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+#col { flex: none; width: 34px; height: 34px; padding: 0; border: 0; background: none; }
+
+#txt, #font {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+#txt { flex: 1; -webkit-user-select: text; user-select: text; }
+#font { flex: none; max-width: 42%; }
