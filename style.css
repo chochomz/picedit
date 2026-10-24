@@ -53,30 +53,35 @@ html, body {
 
 #cropBox {
   position: absolute;
-  border: 1px dotted #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  border: 2px solid #fff;
   touch-action: none;
   cursor: move;
 }
 
-/* 꼭지점 손잡이: 눈에 보이는 점은 작게, 터치 영역은 넓게 */
 .h { position: absolute; width: 44px; height: 44px; touch-action: none; }
-.h::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  top: 14px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-}
-.h.nw { left: -23px; top: -23px; }
-.h.ne { right: -23px; top: -23px; }
-.h.sw { left: -23px; bottom: -23px; }
-.h.se { right: -23px; bottom: -23px; }
+.h::after { content: ""; position: absolute; }
+
+/* 모서리 */
+.h.nw { left: -24px; top: -24px; }
+.h.ne { right: -24px; top: -24px; }
+.h.sw { left: -24px; bottom: -24px; }
+.h.se { right: -24px; bottom: -24px; }
+.h.nw::after, .h.ne::after, .h.sw::after, .h.se::after { width: 22px; height: 22px; }
+.h.nw::after { left: 20px; top: 20px; border-top: 4px solid #fff; border-left: 4px solid #fff; }
+.h.ne::after { left: 2px;  top: 20px; border-top: 4px solid #fff; border-right: 4px solid #fff; }
+.h.sw::after { left: 20px; top: 2px;  border-bottom: 4px solid #fff; border-left: 4px solid #fff; }
+.h.se::after { left: 2px;  top: 2px;  border-bottom: 4px solid #fff; border-right: 4px solid #fff; }
+
+/* 변 */
+.h.n { left: 50%; top: -24px; margin-left: -22px; }
+.h.s { left: 50%; bottom: -24px; margin-left: -22px; }
+.h.w { left: -24px; top: 50%; margin-top: -22px; }
+.h.e { right: -24px; top: 50%; margin-top: -22px; }
+.h.n::after, .h.s::after { left: 8px; top: 20px; width: 28px; height: 4px; background: #fff; border-radius: 2px; }
+.h.w::after, .h.e::after { left: 20px; top: 8px; width: 4px; height: 28px; background: #fff; border-radius: 2px; }
+
+/* 비율 고정일 때는 모서리만 사용 */
+#cropBox.locked .h.n, #cropBox.locked .h.s, #cropBox.locked .h.w, #cropBox.locked .h.e { display: none; }
 
 /* ---------- 하단 도구 모음 ---------- */
 #tools, #cropBar {
@@ -187,49 +192,47 @@ svg {
 #info { margin: 0; text-align: center; font-size: 15px; }
 #hint { margin: 6px 0 8px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--muted); }
 
-/* ---------- 상단 바 ---------- */
-#topbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
-.topbtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* ---------- 상단 버튼 (불러오기 · 되돌리기 · 저장·공유) ---------- */
+#app { padding-top: calc(env(safe-area-inset-top) + 52px); }
+#btnOpen, #btnUndo, #btnSave {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  z-index: 5;
   flex: none;
-  padding: 8px 12px;
+  flex-direction: row;
+  gap: 6px;
+  width: auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  background: var(--bar);
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--bar);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  white-space: nowrap;
-  touch-action: manipulation;
 }
-.topbtn svg { width: 18px; height: 18px; }
-.topbtn[disabled] { opacity: 0.3; }
-.topbtn.accent { margin-left: auto; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+#btnOpen svg, #btnUndo svg, #btnSave svg { width: 18px; height: 18px; }
+#btnOpen { left: 10px; }
+#btnUndo { left: 124px; }
+#btnSave { right: 10px; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-/* ---------- 하단 도구: 칸을 균등 분할해 글자가 겹치지 않게 ---------- */
-#tools .tool { flex: 1 1 0; min-width: 0; padding: 8px 0 6px; font-size: 11px; white-space: nowrap; }
-#tools .tool svg { width: 22px; height: 22px; }
-@media (max-width: 360px) { #tools .tool { font-size: 10px; } }
+#tools { overflow-x: auto; }
+.tool { min-width: 0; }
 .tool.on { color: var(--accent); background: var(--line); }
 
 /* ---------- 모자이크·글자·화살표·도형 ---------- */
 #ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #frame.tooling #ov { pointer-events: auto; touch-action: none; }
 
-#opts, #layerPanel, #placePanel { background: var(--bar); border-top: 1px solid var(--line); padding: 8px 10px 0; }
-#tip, .tip { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+#opts { background: var(--bar); border-top: 1px solid var(--line); padding: 8px 10px 0; }
+#tip { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
 .orow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-#szl, .lbl { flex: none; font-size: 13px; color: var(--muted); }
-#sz, #lbW, #plS { flex: 1; min-width: 0; }
+#szl { flex: none; font-size: 13px; color: var(--muted); }
+#sz { flex: 1; min-width: 0; }
 .btn.small { width: auto; flex: none; margin: 0; padding: 8px 14px; font-size: 14px; }
 .chk { display: flex; align-items: center; gap: 6px; margin-left: auto; font-size: 14px; }
 
-#swatches, #lbSwatches { display: flex; gap: 8px; align-items: center; flex: 1; overflow-x: auto; padding: 2px; }
+#swatches { display: flex; gap: 8px; align-items: center; flex: 1; overflow-x: auto; padding: 2px; }
 .sw { flex: none; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid var(--line); touch-action: manipulation; }
 .sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
-#col, #lbCol { flex: none; width: 34px; height: 34px; padding: 0; border: 0; background: none; }
+#col { flex: none; width: 34px; height: 34px; padding: 0; border: 0; background: none; }
 
 #txt, #font {
   min-width: 0;
@@ -244,5 +247,34 @@ svg {
 #txt { flex: 1; -webkit-user-select: text; user-select: text; }
 #font { flex: none; max-width: 42%; }
 
-/* 추가 사진 테두리 미리보기 */
-#frame.lb::after { content: ""; position: absolute; inset: 0; border: var(--bw, 0px) solid var(--bc, #000); pointer-events: none; }
+
+/* 편집 옵션은 작은 화면에서도 가로로 넘치지 않고 조작 가능 */
+#opts { position: relative; z-index: 4; max-height: 34dvh; overflow-y: auto; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+#rowText { flex-wrap: wrap; }
+#txt { flex: 1 1 150px; }
+#font { flex: 1 1 130px; max-width: 100%; }
+#opts input, #opts select, #opts button { touch-action: manipulation; }
+#ov { cursor: crosshair; }
+#frame.tooling #ov { -webkit-user-select: none; user-select: none; }
+
+
+/* 사파리 화면 위에 떠 있는 고정 버튼을 없애고 일반 도구막대 안에 배치 */
+#app { padding-top: env(safe-area-inset-top); }
+#btnOpen, #btnUndo, #btnSave {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: auto;
+  flex: 1 0 62px;
+  flex-direction: column;
+  gap: 4px;
+  width: auto;
+  padding: 8px 3px 6px;
+  font-size: 11px;
+  background: none;
+  border: 0;
+  border-radius: 10px;
+}
+#btnOpen svg, #btnUndo svg, #btnSave svg { width: 24px; height: 24px; }
+#btnSave { background: none; border: 0; color: var(--accent); }
