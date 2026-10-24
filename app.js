@@ -6,6 +6,7 @@
   /* ===== 설정 ===== */
   const MAX_SIDE = 2048;        // 불러올 때 긴 변의 최대 픽셀 (아이폰 메모리 보호)
   const LIMIT_BYTES = 1000000;  // 저장 파일 크기 상한: 1MB 미만
+  const MERGE_MAX = 3072;       // 합친 사진의 긴 변 최대 픽셀
   const HISTORY_MAX = 6;        // 되돌리기 최대 단계
   const MIN_CROP = 48;          // 자르기 영역 최소 크기(화면 px)
   const STAGE_PAD = 28;         // 화면 가장자리 여백(자르기 손잡이 공간)
@@ -24,6 +25,7 @@
   const chips = Array.from(cropBar.querySelectorAll('.chip'));
   const sheet = $('sheet'), preview = $('preview'), info = $('info'), hint = $('hint');
   const shareBtn = $('shareBtn'), dlLink = $('dlLink'), closeBtn = $('closeBtn');
+  const topbar = $('topbar'), layerPanel = $('layerPanel'), placePanel = $('placePanel');
 
   /* ===== 상태 ===== */
   let hasImage = false;
@@ -34,6 +36,11 @@
   let frameW = 0, frameH = 0;
   let drag = null;
   let exported = null;
+  let photoCount = 0;                     // 합쳐진 사진 수 (최대 3)
+  let mode = null;                        // null | 'layer'(추가 사진 편집) | 'place'(배치)
+  let pickMode = 'base';
+  let stash = null, lyr = null, place = null;
+  let lb = { color: '#000000', v: 0 };    // 추가 사진 테두리
 
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const T = (f) => (window.Tools && window.Tools[f] ? window.Tools[f]() : false); // tools.js 연결
@@ -44,6 +51,8 @@
     frame.hidden = !hasImage;
     [btn.rotL, btn.rotR, btn.crop, btn.save].forEach((b) => { b.disabled = !hasImage; });
     btn.undo.disabled = history.length === 0;
+    btn.open.disabled = hasImage && (photoCount >= 3 || !!mode);
+    if (mode) btn.save.disabled = true;
   }
 
   // 편집 중인 사진을 화면에 꽉 차게 맞춤
@@ -64,6 +73,7 @@
     frameW = dw; frameH = dh;
     if (cropping) renderCrop();
     T('sync');
+    lbPreview();
   }
 
   /* ===== 사진 불러오기 ===== */
@@ -87,6 +97,7 @@
       history = [];
       hasImage = true;
       T('reset');
+      photoCount = 1;
       exitCrop();
       updateUI();
       layout();
@@ -98,7 +109,8 @@
   }
 
   function openPicker() {
-    if (hasImage && history.length && !confirm('지금까지 편집한 내용이 사라집니다. 새 사진을 불러올까요?')) return;
+    if (hasImage && (mode || photoCount >= 3)) return;
+    pickMode = hasImage ? 'layer' : 'base';
     fileInput.click();
   }
 
@@ -155,6 +167,8 @@
     T('stop');
     cropping = true;
     tools.hidden = true;
+    topbar.hidden = true;
+    layerPanel.hidden = true;
     cropBar.hidden = false;
     dimClip.hidden = false;
     cropBox.hidden = false;
@@ -166,7 +180,9 @@
   function exitCrop() {
     cropping = false;
     drag = null;
-    tools.hidden = false;
+    tools.hidden = mode === 'place';
+    topbar.hidden = mode === 'place';
+    layerPanel.hidden = mode !== 'layer';
     cropBar.hidden = true;
     dimClip.hidden = true;
     cropBox.hidden = true;
@@ -354,13 +370,158 @@
     }
   }
 
+  /* ===== 사진 합치기 (최대 3장, 추가 사진은 현재 사진의 왼쪽에 붙음) ===== */
+  const LB_COLORS = ['#000000', '#ffffff', '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#0a84ff', '#af52de'];
+  const lbW = $('lbW'), lbCol = $('lbCol'), lbSw = $('lbSwatches'), plS = $('plS'), plV = $('plV');
+
+  function modeUI() {
+    layerPanel.hidden = mode !== 'layer';
+    placePanel.hidden = mode !== 'place';
+    tools.hidden = mode === 'place' || cropping;
+    topbar.hidden = mode === 'place' || cropping;
+    frame.classList.toggle('lb', mode === 'layer');
+    updateUI();
+  }
+
+  // 테두리 미리보기(화면용): 사진 크기에 비례한 두께
+  function lbPreview() {
+    if (mode !== 'layer' || !frameW) return;
+    const bw = lb.v * Math.max(work.width, work.height) / 500;
+    frame.style.setProperty('--bw', (bw * frameW / work.width) + 'px');
+    frame.style.setProperty('--bc', lb.color);
+  }
+
+  function setLbColor(c) {
+    lb.color = c;
+    lbCol.value = c;
+    lbSw.querySelectorAll('.sw').forEach((b, i) => b.classList.toggle('on', LB_COLORS[i] === c));
+    lbPreview();
+  }
+
+  async function loadLayer(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      const s = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * s));
+      c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      const x = c.getContext('2d');
+      x.fillStyle = '#fff';
+      x.fillRect(0, 0, c.width, c.height);
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(img, 0, 0, c.width, c.height);
+      T('stop');
+      stash = { base: snapshot(), hist: history }; // 기존 사진과 편집 기록을 따로 보관
+      history = [];
+      setWork(c);
+      mode = 'layer';
+      lb = { color: '#000000', v: 0 };
+      lbW.value = 0;
+      setLbColor('#000000');
+      modeUI();
+      layout();
+    } catch (err) {
+      alert('사진을 불러오지 못했습니다. 다른 사진으로 다시 시도해 주세요.');
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  function layerCancel() {
+    if (!mode || !stash) return;
+    T('stop');
+    setWork(stash.base);
+    history = stash.hist;
+    mode = null; stash = null; lyr = null;
+    modeUI();
+    layout();
+  }
+
+  function layerApply() {
+    T('stop');
+    const L = snapshot();
+    const bw = Math.round(lb.v * Math.max(L.width, L.height) / 500);
+    if (bw > 0) {
+      const x = L.getContext('2d');
+      x.fillStyle = lb.color;
+      x.fillRect(0, 0, L.width, bw);
+      x.fillRect(0, L.height - bw, L.width, bw);
+      x.fillRect(0, 0, bw, L.height);
+      x.fillRect(L.width - bw, 0, bw, L.height);
+    }
+    lyr = L;
+    place = { pct: 100, align: 'mid' };
+    plS.value = 100;
+    plV.textContent = '100%';
+    placePanel.querySelectorAll('[data-al]').forEach((b) => b.classList.toggle('on', b.dataset.al === 'mid'));
+    mode = 'place';
+    modeUI();
+    renderPlace();
+  }
+
+  // 추가 사진을 기존 사진 높이에 맞춰 왼쪽에 붙인 미리보기(크기·세로 위치 반영)
+  function renderPlace() {
+    const B = stash.base, L = lyr;
+    const s = (place.pct / 100) * (B.height / L.height);
+    const lw = L.width * s, lh = L.height * s;
+    const W = lw + B.width, H = Math.max(B.height, lh);
+    const off = (h) => (place.align === 'top' ? 0 : place.align === 'mid' ? (H - h) / 2 : H - h);
+    const f = Math.min(1, MERGE_MAX / Math.max(W, H));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(W * f));
+    c.height = Math.max(1, Math.round(H * f));
+    const x = c.getContext('2d');
+    x.fillStyle = '#fff';
+    x.fillRect(0, 0, c.width, c.height);
+    x.imageSmoothingQuality = 'high';
+    x.scale(f, f);
+    x.drawImage(L, 0, off(lh), lw, lh);
+    x.drawImage(B, lw, off(B.height));
+    setWork(c);
+    layout();
+  }
+
+  function placeApply() {
+    history = stash.hist;
+    history.push(stash.base); // 합치기 전 상태로 되돌리기 가능
+    if (history.length > HISTORY_MAX) history.shift();
+    photoCount++;
+    mode = null; stash = null; lyr = null;
+    modeUI();
+    layout();
+  }
+
+  LB_COLORS.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'sw' + (i ? '' : ' on');
+    b.style.background = c;
+    b.setAttribute('aria-label', c);
+    b.addEventListener('click', () => setLbColor(c));
+    lbSw.appendChild(b);
+  });
+  lbCol.addEventListener('input', () => setLbColor(lbCol.value));
+  lbW.addEventListener('input', () => { lb.v = +lbW.value; lbPreview(); });
+  $('lbCancel').addEventListener('click', layerCancel);
+  $('lbApply').addEventListener('click', layerApply);
+  plS.addEventListener('input', () => { place.pct = +plS.value; plV.textContent = place.pct + '%'; renderPlace(); });
+  placePanel.querySelectorAll('[data-al]').forEach((b) => b.addEventListener('click', () => {
+    place.align = b.dataset.al;
+    placePanel.querySelectorAll('[data-al]').forEach((x) => x.classList.toggle('on', x === b));
+    renderPlace();
+  }));
+  $('plCancel').addEventListener('click', layerCancel);
+  $('plApply').addEventListener('click', placeApply);
+
   /* ===== 이벤트 연결 ===== */
   btn.open.addEventListener('click', openPicker);
   $('emptyOpen').addEventListener('click', openPicker);
   fileInput.addEventListener('change', () => {
     const f = fileInput.files && fileInput.files[0];
     fileInput.value = '';
-    if (f) loadFile(f);
+    if (f) { if (pickMode === 'layer') loadLayer(f); else loadFile(f); }
   });
 
   btn.rotL.addEventListener('click', () => rotate(-1));

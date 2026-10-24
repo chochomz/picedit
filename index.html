@@ -15,6 +15,19 @@
 
 <div id="app">
 
+  <!-- 상단 바 -->
+  <div id="topbar">
+    <button class="topbtn" id="btnOpen">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>불러오기
+    </button>
+    <button class="topbtn" id="btnUndo" disabled>
+      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>되돌리기
+    </button>
+    <button class="topbtn accent" id="btnSave" disabled>
+      <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>저장·공유
+    </button>
+  </div>
+
   <!-- 편집 화면 -->
   <div id="stage">
     <div id="empty">
@@ -27,15 +40,43 @@
       <canvas id="ov"></canvas>
       <div id="dimClip" hidden><div id="dim"></div></div>
       <div id="cropBox" hidden>
-        <span class="h n" data-h="n"></span>
-        <span class="h s" data-h="s"></span>
-        <span class="h w" data-h="w"></span>
-        <span class="h e" data-h="e"></span>
         <span class="h nw" data-h="nw"></span>
         <span class="h ne" data-h="ne"></span>
         <span class="h sw" data-h="sw"></span>
         <span class="h se" data-h="se"></span>
       </div>
+    </div>
+  </div>
+
+  <!-- 추가 사진 편집 (테두리) -->
+  <div id="layerPanel" hidden>
+    <p class="tip">추가 사진을 자르기·회전으로 다듬고 테두리를 정한 뒤 "레이어 적용"을 누르세요</p>
+    <div class="orow">
+      <div id="lbSwatches"></div>
+      <input type="color" id="lbCol" value="#000000" aria-label="테두리 색 직접 선택">
+    </div>
+    <div class="orow">
+      <span class="lbl">테두리 두께</span>
+      <input type="range" id="lbW" min="0" max="30" value="0">
+      <button class="btn small" id="lbCancel">취소</button>
+      <button class="btn small primary" id="lbApply">레이어 적용</button>
+    </div>
+  </div>
+
+  <!-- 추가 사진 배치 -->
+  <div id="placePanel" hidden>
+    <p class="tip">기존 사진 왼쪽에 붙었습니다. 크기와 세로 위치를 맞춘 뒤 "적용"을 누르세요</p>
+    <div class="orow">
+      <span class="lbl">크기</span>
+      <input type="range" id="plS" min="30" max="200" value="100">
+      <span class="lbl" id="plV">100%</span>
+    </div>
+    <div class="orow">
+      <button class="chip" data-al="top">위</button>
+      <button class="chip on" data-al="mid">가운데</button>
+      <button class="chip" data-al="bot">아래</button>
+      <button class="btn small" id="plCancel" style="margin-left:auto">취소</button>
+      <button class="btn small primary" id="plApply">적용</button>
     </div>
   </div>
 
@@ -90,9 +131,6 @@
 
   <!-- 기본 도구 모음 -->
   <nav id="tools">
-    <button class="tool" id="btnOpen">
-      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>불러오기
-    </button>
     <button class="tool" id="btnRotL" disabled>
       <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>왼쪽
     </button>
@@ -113,12 +151,6 @@
     </button>
     <button class="tool" id="btnShape" data-tool="shape" disabled>
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="11" height="11" rx="1"/><circle cx="15" cy="15" r="6"/></svg>도형
-    </button>
-    <button class="tool" id="btnUndo" disabled>
-      <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>되돌리기
-    </button>
-    <button class="tool accent" id="btnSave" disabled>
-      <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>저장·공유
     </button>
   </nav>
 
